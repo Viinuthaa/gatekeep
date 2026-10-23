@@ -60,3 +60,17 @@ def test_invalid_chat_request():
     )
 
     assert response.status_code == 422
+
+
+def test_invalid_message_role():
+    response = client.post(
+        "/api/v1/chat/completions/validate",
+        json={
+            "model": "example-model",
+            "messages": [
+                {"role": "banana", "content": "Hello!"}
+            ],
+        },
+    )
+
+    assert response.status_code == 422
