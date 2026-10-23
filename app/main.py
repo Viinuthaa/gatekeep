@@ -20,3 +20,12 @@ def home():
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/api/v1")
+def api_info():
+    return {
+        "name": "Gatekeep",
+        "version": "0.1.0",
+        "description": "A gateway that guards every LLM call.",
+    }
