@@ -1,6 +1,6 @@
 
 from fastapi import FastAPI
-
+from app.schemas import ChatRequest
 from app.config import settings
 
 app = FastAPI(
@@ -31,4 +31,13 @@ def api_info():
         "name": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "description": "A gateway that guards every LLM call.",
+    }
+
+
+@app.post("/api/v1/chat/completions/validate")
+def validate_chat_request(request: ChatRequest):
+    return {
+        "valid": True,
+        "model": request.model,
+        "message_count": len(request.messages),
     }
