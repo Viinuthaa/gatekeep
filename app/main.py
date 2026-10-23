@@ -1,4 +1,6 @@
 
+import time
+
 from fastapi import Depends, FastAPI, HTTPException
 from openai import APIConnectionError, APIStatusError, RateLimitError
 
@@ -6,6 +8,7 @@ from app.auth import verify_api_key
 from app.config import settings
 from app.limiter import check_rate_limit
 from app.providers import get_chat_completion
+from app.request_logs import log_request
 from app.schemas import ChatRequest
 
 
@@ -55,6 +58,7 @@ async def chat_completions(
     tenant_id: str = Depends(verify_api_key),
 ):
     await check_rate_limit(tenant_id)
+    start_time = time.perf_counter()
 
     try:
         result = await get_chat_completion(
@@ -65,9 +69,21 @@ async def chat_completions(
             ],
         )
 
+        latency_ms = (time.perf_counter() - start_time) * 1000
+
+        request_log = log_request(
+            tenant_id=tenant_id,
+            model=result["model"],
+            prompt_tokens=result["prompt_tokens"],
+            completion_tokens=result["completion_tokens"],
+            latency_ms=latency_ms,
+        )
+
         return {
             **result,
             "tenant_id": tenant_id,
+            "request_id": request_log["request_id"],
+            "latency_ms": request_log["latency_ms"],
         }
 
     except RateLimitError:
