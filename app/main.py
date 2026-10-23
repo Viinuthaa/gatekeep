@@ -1,7 +1,8 @@
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from openai import APIConnectionError, APIStatusError, RateLimitError
 
+from app.auth import verify_api_key
 from app.config import settings
 from app.providers import get_chat_completion
 from app.schemas import ChatRequest
@@ -48,7 +49,10 @@ def validate_chat_request(request: ChatRequest):
 
 
 @app.post("/api/v1/chat/completions")
-async def chat_completions(request: ChatRequest):
+async def chat_completions(
+    request: ChatRequest,
+    tenant_id: str = Depends(verify_api_key),
+):
     try:
         result = await get_chat_completion(
             model=request.model,
@@ -57,7 +61,11 @@ async def chat_completions(request: ChatRequest):
                 for message in request.messages
             ],
         )
-        return result
+
+        return {
+            **result,
+            "tenant_id": tenant_id,
+        }
 
     except RateLimitError:
         raise HTTPException(
