@@ -1,9 +1,11 @@
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from openai import APIConnectionError, APIStatusError, RateLimitError
 
 from app.config import settings
 from app.providers import get_chat_completion
 from app.schemas import ChatRequest
+
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -47,12 +49,30 @@ def validate_chat_request(request: ChatRequest):
 
 @app.post("/api/v1/chat/completions")
 async def chat_completions(request: ChatRequest):
-    result = await get_chat_completion(
-        model=request.model,
-        messages=[
-            {"role": message.role, "content": message.content}
-            for message in request.messages
-        ],
-    )
+    try:
+        result = await get_chat_completion(
+            model=request.model,
+            messages=[
+                {"role": message.role, "content": message.content}
+                for message in request.messages
+            ],
+        )
+        return result
 
-    return result
+    except RateLimitError:
+        raise HTTPException(
+            status_code=429,
+            detail="The AI provider rate limit was reached. Try again later.",
+        )
+
+    except APIConnectionError:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not connect to the AI provider.",
+        )
+
+    except APIStatusError:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI provider returned an error.",
+        )

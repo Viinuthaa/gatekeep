@@ -3,7 +3,10 @@ from openai import AsyncOpenAI
 
 from app.config import settings
 
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+
+client = AsyncOpenAI(
+    api_key=settings.OPENAI_API_KEY or "missing-api-key"
+)
 
 
 async def get_chat_completion(model: str, messages: list[dict]):
