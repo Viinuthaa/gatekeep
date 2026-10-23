@@ -1,10 +1,13 @@
 
 from fastapi import FastAPI
 
+from app.config import settings
+
 app = FastAPI(
-    title="Gatekeep",
+    title=settings.APP_NAME,
     description="A gateway that guards every LLM call.",
-    version="0.1.0",
+    version=settings.APP_VERSION,
+    debug=settings.DEBUG,
 )
 
 
@@ -25,7 +28,7 @@ def health_check():
 @app.get("/api/v1")
 def api_info():
     return {
-        "name": "Gatekeep",
-        "version": "0.1.0",
+        "name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
         "description": "A gateway that guards every LLM call.",
     }
