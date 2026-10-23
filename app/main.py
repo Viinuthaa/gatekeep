@@ -4,6 +4,7 @@ from openai import APIConnectionError, APIStatusError, RateLimitError
 
 from app.auth import verify_api_key
 from app.config import settings
+from app.limiter import check_rate_limit
 from app.providers import get_chat_completion
 from app.schemas import ChatRequest
 
@@ -53,6 +54,8 @@ async def chat_completions(
     request: ChatRequest,
     tenant_id: str = Depends(verify_api_key),
 ):
+    await check_rate_limit(tenant_id)
+
     try:
         result = await get_chat_completion(
             model=request.model,

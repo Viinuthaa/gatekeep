@@ -1,6 +1,10 @@
+
 fastapi==0.115.12
 uvicorn[standard]==0.34.0
 pytest
 httpx
 python-dotenv
 openai
+redis
+fakeredis
+pytest-asyncio
