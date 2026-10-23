@@ -1,7 +1,9 @@
 
 from fastapi import FastAPI
-from app.schemas import ChatRequest
+
 from app.config import settings
+from app.providers import get_chat_completion
+from app.schemas import ChatRequest
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -41,3 +43,16 @@ def validate_chat_request(request: ChatRequest):
         "model": request.model,
         "message_count": len(request.messages),
     }
+
+
+@app.post("/api/v1/chat/completions")
+async def chat_completions(request: ChatRequest):
+    result = await get_chat_completion(
+        model=request.model,
+        messages=[
+            {"role": message.role, "content": message.content}
+            for message in request.messages
+        ],
+    )
+
+    return result

@@ -74,3 +74,35 @@ def test_invalid_message_role():
     )
 
     assert response.status_code == 422
+
+
+from unittest.mock import AsyncMock, patch
+
+
+def test_chat_completions():
+    mock_result = {
+        "id": "test-response",
+        "model": "test-model",
+        "content": "Hello from Gatekeep!",
+        "prompt_tokens": 5,
+        "completion_tokens": 4,
+    }
+
+    with patch(
+        "app.main.get_chat_completion",
+        new_callable=AsyncMock,
+        return_value=mock_result,
+    ):
+        response = client.post(
+            "/api/v1/chat/completions",
+            json={
+                "model": "test-model",
+                "messages": [
+                    {"role": "user", "content": "Hello!"}
+                ],
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["content"] == "Hello from Gatekeep!"
+    assert response.json()["model"] == "test-model"
