@@ -10,6 +10,7 @@ from app.config import settings
 from app.limiter import check_rate_limit
 from app.providers import get_chat_completion
 from app.request_logs import log_request
+from app.router import route_request
 from app.schemas import ChatRequest
 
 
@@ -65,12 +66,17 @@ async def chat_completions(
         for message in request.messages
     ]
 
+    decision = route_request(
+        messages=messages,
+        requested_model=request.model,
+    )
+
     start_time = time.perf_counter()
 
     try:
         cached_result = await get_cached_response(
             tenant_id=tenant_id,
-            model=request.model,
+            model=decision.model,
             messages=messages,
         )
 
@@ -82,7 +88,7 @@ async def chat_completions(
             completion_tokens = 0
         else:
             result = await get_chat_completion(
-                model=request.model,
+                model=decision.model,
                 messages=messages,
             )
 
@@ -91,7 +97,7 @@ async def chat_completions(
 
             await set_cached_response(
                 tenant_id=tenant_id,
-                model=request.model,
+                model=decision.model,
                 messages=messages,
                 response=result,
             )
@@ -114,6 +120,11 @@ async def chat_completions(
             "cache_hit": cache_hit,
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
+            "routing": {
+                "complexity": decision.complexity,
+                "reason": decision.reason,
+                "selected_model": decision.model,
+            },
         }
 
     except RateLimitError:
