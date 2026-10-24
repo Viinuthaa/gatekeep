@@ -27,3 +27,13 @@ class ChatRequest(BaseModel):
         min_length=1,
         description="The conversation messages",
     )
+
+
+class DocumentIngestRequest(BaseModel):
+    document_id: str = Field(..., min_length=1, max_length=200)
+    text: str = Field(..., min_length=1)
+
+
+class DocumentSearchRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    limit: int = Field(default=5, ge=1, le=20)

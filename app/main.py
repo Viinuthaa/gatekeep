@@ -7,11 +7,16 @@ from openai import APIConnectionError, APIStatusError, RateLimitError
 from app.auth import verify_api_key
 from app.cache import get_cached_response, set_cached_response
 from app.config import settings
+from app.document_store import document_search
 from app.limiter import check_rate_limit
 from app.providers import get_chat_completion
 from app.request_logs import log_request
 from app.router import route_request
-from app.schemas import ChatRequest
+from app.schemas import (
+    ChatRequest,
+    DocumentIngestRequest,
+    DocumentSearchRequest,
+)
 
 
 app = FastAPI(
@@ -51,6 +56,49 @@ def validate_chat_request(request: ChatRequest):
         "valid": True,
         "model": request.model,
         "message_count": len(request.messages),
+    }
+
+
+@app.post("/api/v1/documents")
+async def ingest_document(
+    request: DocumentIngestRequest,
+    tenant_id: str = Depends(verify_api_key),
+):
+    try:
+        chunks = document_search.add_document(
+            tenant_id=tenant_id,
+            document_id=request.document_id,
+            text=request.text,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return {
+        "tenant_id": tenant_id,
+        "document_id": request.document_id,
+        "chunks_created": len(chunks),
+    }
+
+
+@app.post("/api/v1/documents/search")
+async def search_documents(
+    request: DocumentSearchRequest,
+    tenant_id: str = Depends(verify_api_key),
+):
+    try:
+        results = document_search.search(
+            tenant_id=tenant_id,
+            query=request.query,
+            limit=request.limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return {
+        "tenant_id": tenant_id,
+        "query": request.query,
+        "result_count": len(results),
+        "results": results,
     }
 
 
