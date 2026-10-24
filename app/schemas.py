@@ -37,3 +37,14 @@ class DocumentIngestRequest(BaseModel):
 class DocumentSearchRequest(BaseModel):
     query: str = Field(..., min_length=1)
     limit: int = Field(default=5, ge=1, le=20)
+
+
+class EvaluationCaseRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    response: str
+    expected_contains: list[str] = Field(default_factory=list)
+    expected_not_contains: list[str] = Field(default_factory=list)
+
+
+class EvaluationRunRequest(BaseModel):
+    cases: list[EvaluationCaseRequest] = Field(..., min_length=1, max_length=100)

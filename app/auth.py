@@ -1,8 +1,11 @@
 
 import secrets
 
-from fastapi import Header, HTTPException
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+
+security = HTTPBearer(auto_error=False)
 
 API_KEYS = {
     "gk_test_demo_key": "demo-tenant",
@@ -10,15 +13,15 @@ API_KEYS = {
 
 
 async def verify_api_key(
-    authorization: str | None = Header(default=None),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> str:
-    if not authorization or not authorization.startswith("Bearer "):
+    if credentials is None:
         raise HTTPException(
             status_code=401,
             detail="Missing or invalid API key",
         )
 
-    api_key = authorization.removeprefix("Bearer ").strip()
+    api_key = credentials.credentials
 
     for stored_key, tenant_id in API_KEYS.items():
         if secrets.compare_digest(api_key, stored_key):

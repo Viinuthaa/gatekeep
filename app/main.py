@@ -8,6 +8,7 @@ from app.auth import verify_api_key
 from app.cache import get_cached_response, set_cached_response
 from app.config import settings
 from app.document_store import document_search
+from app.evaluations import EvaluationCase, run_evaluations
 from app.limiter import check_rate_limit
 from app.providers import get_chat_completion
 from app.request_logs import log_request
@@ -16,6 +17,7 @@ from app.schemas import (
     ChatRequest,
     DocumentIngestRequest,
     DocumentSearchRequest,
+    EvaluationRunRequest,
 )
 
 
@@ -102,6 +104,32 @@ async def search_documents(
     }
 
 
+@app.post("/api/v1/evaluations/run")
+async def run_evaluation_suite(
+    request: EvaluationRunRequest,
+    tenant_id: str = Depends(verify_api_key),
+):
+    cases = [
+        EvaluationCase(
+            name=case.name,
+            response=case.response,
+            expected_contains=tuple(case.expected_contains),
+            expected_not_contains=tuple(case.expected_not_contains),
+        )
+        for case in request.cases
+    ]
+
+    try:
+        report = run_evaluations(cases)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return {
+        "tenant_id": tenant_id,
+        **report,
+    }
+
+
 @app.post("/api/v1/chat/completions")
 async def chat_completions(
     request: ChatRequest,
@@ -180,13 +208,11 @@ async def chat_completions(
             status_code=429,
             detail="The AI provider rate limit was reached. Try again later.",
         )
-
     except APIConnectionError:
         raise HTTPException(
             status_code=502,
             detail="Could not connect to the AI provider.",
         )
-
     except APIStatusError:
         raise HTTPException(
             status_code=502,
