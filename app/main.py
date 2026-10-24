@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from openai import APIConnectionError, APIStatusError, RateLimitError
 
 from app.auth import verify_api_key
+from app.cache import get_cached_response, set_cached_response
 from app.config import settings
 from app.limiter import check_rate_limit
 from app.providers import get_chat_completion
@@ -58,24 +59,50 @@ async def chat_completions(
     tenant_id: str = Depends(verify_api_key),
 ):
     await check_rate_limit(tenant_id)
+
+    messages = [
+        {"role": message.role, "content": message.content}
+        for message in request.messages
+    ]
+
     start_time = time.perf_counter()
 
     try:
-        result = await get_chat_completion(
+        cached_result = await get_cached_response(
+            tenant_id=tenant_id,
             model=request.model,
-            messages=[
-                {"role": message.role, "content": message.content}
-                for message in request.messages
-            ],
+            messages=messages,
         )
+
+        cache_hit = cached_result is not None
+
+        if cache_hit:
+            result = cached_result
+            prompt_tokens = 0
+            completion_tokens = 0
+        else:
+            result = await get_chat_completion(
+                model=request.model,
+                messages=messages,
+            )
+
+            prompt_tokens = result["prompt_tokens"]
+            completion_tokens = result["completion_tokens"]
+
+            await set_cached_response(
+                tenant_id=tenant_id,
+                model=request.model,
+                messages=messages,
+                response=result,
+            )
 
         latency_ms = (time.perf_counter() - start_time) * 1000
 
         request_log = log_request(
             tenant_id=tenant_id,
             model=result["model"],
-            prompt_tokens=result["prompt_tokens"],
-            completion_tokens=result["completion_tokens"],
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
             latency_ms=latency_ms,
         )
 
@@ -84,6 +111,9 @@ async def chat_completions(
             "tenant_id": tenant_id,
             "request_id": request_log["request_id"],
             "latency_ms": request_log["latency_ms"],
+            "cache_hit": cache_hit,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
         }
 
     except RateLimitError:
