@@ -4,13 +4,11 @@ import {
   Check,
   ChevronRight,
   CircleHelp,
-  FlaskConical,
   KeyRound,
   LoaderCircle,
   RefreshCw,
   Search,
   Send,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import "./App.css";
@@ -75,6 +73,11 @@ function errorText(data: ApiResponse, status: number) {
   return typeof data.detail === "string"
     ? data.detail
     : `Request failed (${status}).`;
+}
+function formatLatency(ms: number): string {
+  return ms >= 1000
+    ? `${(ms / 1000).toFixed(2)} s`
+    : `${ms.toFixed(1)} ms`;
 }
 
 function App() {
@@ -924,7 +927,7 @@ ${JSON.stringify(
                           <span>LATENCY</span>
                           <strong>
                             {typeof response.latency_ms === "number"
-                              ? `${response.latency_ms.toFixed(1)} ms`
+                              ? formatLatency(response.latency_ms)
                               : "Not returned"}
                           </strong>
                         </div>
@@ -1051,7 +1054,7 @@ ${JSON.stringify(
                       </span>
                       <span className="request-list-result">
                         {item.latency !== undefined
-                          ? `${item.latency.toFixed(1)} ms`
+                          ? formatLatency(item.latency)
                           : item.status}
                       </span>
                     </button>
