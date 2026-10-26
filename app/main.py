@@ -2,6 +2,7 @@
 import time
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from openai import APIConnectionError, APIStatusError, RateLimitError
 
 from app.auth import verify_api_key
@@ -26,6 +27,17 @@ app = FastAPI(
     description="A gateway that guards every LLM call.",
     version=settings.APP_VERSION,
     debug=settings.DEBUG,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -105,7 +117,7 @@ async def search_documents(
 
 
 @app.post("/api/v1/evaluations/run")
-async def run_evaluation_suite(
+async def evaluate_responses(
     request: EvaluationRunRequest,
     tenant_id: str = Depends(verify_api_key),
 ):
@@ -203,18 +215,20 @@ async def chat_completions(
             },
         }
 
-    except RateLimitError:
+    except RateLimitError as exc:
         raise HTTPException(
             status_code=429,
             detail="The AI provider rate limit was reached. Try again later.",
-        )
-    except APIConnectionError:
+        ) from exc
+
+    except APIConnectionError as exc:
         raise HTTPException(
             status_code=502,
             detail="Could not connect to the AI provider.",
-        )
-    except APIStatusError:
+        ) from exc
+
+    except APIStatusError as exc:
         raise HTTPException(
             status_code=502,
             detail="The AI provider returned an error.",
-        )
+        ) from exc

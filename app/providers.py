@@ -4,14 +4,26 @@ from openai import AsyncOpenAI
 from app.config import settings
 
 
-client = AsyncOpenAI(
-    api_key=settings.OPENAI_API_KEY or "missing-api-key"
-)
+if settings.AI_PROVIDER == "ollama":
+    client = AsyncOpenAI(
+        base_url=settings.OLLAMA_BASE_URL,
+        api_key="ollama",
+    )
+else:
+    client = AsyncOpenAI(
+        api_key=settings.OPENAI_API_KEY or "missing-api-key",
+    )
 
 
 async def get_chat_completion(model: str, messages: list[dict]):
+    selected_model = (
+        settings.OLLAMA_MODEL
+        if settings.AI_PROVIDER == "ollama"
+        else model
+    )
+
     response = await client.chat.completions.create(
-        model=model,
+        model=selected_model,
         messages=messages,
     )
 

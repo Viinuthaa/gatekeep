@@ -110,8 +110,8 @@ select:focus-visible {
   color: #ffffff;
   background: transparent;
   border: 0;
-  font-size: 21px;
-  font-weight: 700;
+  font-size: 40px;
+  font-weight: 15000;
   letter-spacing: -0.015em;
   text-align: left;
 }
@@ -184,7 +184,15 @@ select:focus-visible {
 }
 
 .nav-caption-main {
-  margin-top: 37px;
+  display: block;
+  margin: 24px 10px 12px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  line-height: 1.6;
+  color: #8de2c4;
+  text-transform: uppercase;
 }
 
 .navigation {
@@ -396,15 +404,15 @@ select:focus-visible {
 .intro-kicker,
 .section-index {
   color: var(--teal);
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.07em;
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.7;
 }
-
 .intro-kicker {
   margin-bottom: 12px;
 }
-
 .intro h1 {
   margin: 0;
   color: var(--text);

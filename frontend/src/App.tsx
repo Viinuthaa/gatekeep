@@ -295,8 +295,8 @@ function App() {
             typeof data.cache_hit !== "boolean"
               ? "Cache outcome was not reported"
               : cacheHit
-                ? "Cache hit Â· cached response returned"
-                : "Cache miss Â· response fetched from provider",
+                ? "Cache hit  cached response returned"
+                : "Cache miss  response fetched from provider",
         },
         {
           name: "Provider",
@@ -586,9 +586,7 @@ function App() {
           type="button"
           onClick={() => setPage("playground")}
         >
-          <span className="brand-symbol">
-            <ShieldCheck size={25} strokeWidth={1.8} />
-          </span>
+        
           <span>Gatekeep</span>
         </button>
 
@@ -851,7 +849,6 @@ function App() {
                       )}
                       {loading ? "Sending request" : "Send request"}
                     </button>
-                    <span className="keyboard-hint">Ctrl or âŒ˜ + Enter</span>
                   </div>
 
                   {gateway !== "online" && (
@@ -1236,7 +1233,7 @@ ${JSON.stringify(
                     <span className="section-index">01 / TEST CASE</span>
                     <h2>Configure text checks</h2>
                   </div>
-                  <FlaskConical size={20} />
+                  
                 </div>
                 <p className="panel-description">
                   This evaluator checks required and forbidden text. It is
@@ -1383,7 +1380,7 @@ ${JSON.stringify(
                   <span className="section-index">ACCESS / LOCAL KEY</span>
                   <h2>Gatekeep API key</h2>
                 </div>
-                <KeyRound size={21} />
+               
               </div>
               <p className="panel-description">
                 This key authenticates requests to the local backend. The
