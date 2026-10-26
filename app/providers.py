@@ -8,10 +8,14 @@ if settings.AI_PROVIDER == "ollama":
     client = AsyncOpenAI(
         base_url=settings.OLLAMA_BASE_URL,
         api_key="ollama",
+        timeout=60.0,
+        max_retries=0,
     )
 else:
     client = AsyncOpenAI(
         api_key=settings.OPENAI_API_KEY or "missing-api-key",
+        timeout=60.0,
+        max_retries=0,
     )
 
 
@@ -25,6 +29,8 @@ async def get_chat_completion(model: str, messages: list[dict]):
     response = await client.chat.completions.create(
         model=selected_model,
         messages=messages,
+        max_tokens=180,
+        temperature=0.2,
     )
 
     usage = response.usage

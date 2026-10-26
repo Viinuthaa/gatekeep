@@ -43,11 +43,13 @@ async def test_get_chat_completion_returns_expected_fields(monkeypatch):
         "completion_tokens": 8,
     }
 
-    mock_create.assert_awaited_once_with(
-        model=providers.settings.OLLAMA_MODEL
+    mock_create.assert_awaited_once_with(   
+         model=providers.settings.OLLAMA_MODEL
         if providers.settings.AI_PROVIDER == "ollama"
         else "requested-model",
         messages=[{"role": "user", "content": "Hello"}],
+        max_tokens=180,
+        temperature=0.2,
     )
 
 
