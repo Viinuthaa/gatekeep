@@ -17,6 +17,7 @@ def route_request(
         message.get("content", "")
         for message in messages
         if message.get("role") == "user"
+        and isinstance(message.get("content", ""), str)
     ).strip()
 
     word_count = len(prompt.split())

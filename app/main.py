@@ -39,6 +39,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
     ],
     allow_credentials=False,
     allow_methods=["*"],
@@ -178,20 +180,14 @@ async def chat_completions(
         search_status = "not_needed"
         search_elapsed = 0.0
 
-        # Measure live web search separately.
         if needs_web_search(user_prompt):
             search_start = time.perf_counter()
-
-            search_results, search_succeeded = await search_web(
-                user_prompt
-            )
-
+            search_results, search_succeeded = await search_web(user_prompt)
             search_elapsed = time.perf_counter() - search_start
             print(f"[TIMING] Web search: {search_elapsed:.2f}s")
 
             if search_succeeded and search_results:
                 search_context = build_search_context(search_results)
-
                 messages.insert(
                     0,
                     {
@@ -209,24 +205,19 @@ async def chat_completions(
                         ),
                     },
                 )
-
                 search_used = True
                 search_status = "success"
-
             elif search_succeeded:
                 search_status = "no_results"
             else:
                 search_status = "unavailable"
 
-        # Measure cache lookup separately.
         cache_start = time.perf_counter()
-
         cached_result = await get_cached_response(
             tenant_id=tenant_id,
             model=decision.model,
             messages=messages,
         )
-
         cache_elapsed = time.perf_counter() - cache_start
         print(f"[TIMING] Cache lookup: {cache_elapsed:.2f}s")
 
@@ -238,14 +229,11 @@ async def chat_completions(
             completion_tokens = 0
             print("[TIMING] Provider generation skipped (cache hit)")
         else:
-            # Measure provider generation separately.
             provider_start = time.perf_counter()
-
             result = await get_chat_completion(
                 model=decision.model,
                 messages=messages,
             )
-
             provider_elapsed = time.perf_counter() - provider_start
             print(f"[TIMING] Provider generation: {provider_elapsed:.2f}s")
 
@@ -253,14 +241,12 @@ async def chat_completions(
             completion_tokens = result["completion_tokens"]
 
             cache_write_start = time.perf_counter()
-
             await set_cached_response(
                 tenant_id=tenant_id,
                 model=decision.model,
                 messages=messages,
                 response=result,
             )
-
             cache_write_elapsed = time.perf_counter() - cache_write_start
             print(f"[TIMING] Cache write: {cache_write_elapsed:.2f}s")
 
