@@ -863,10 +863,77 @@ select:focus-visible {
   min-height: 140px;
   padding: 19px 0 23px;
   color: var(--text);
-  font-size: 16px;
-  line-height: 1.68;
+  font-size: 15px;
+  line-height: 1.7;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.answer-content h1,
+.answer-content h2,
+.answer-content h3 {
+  margin: 20px 0 12px;
+  line-height: 1.35;
+}
+
+.answer-content p {
+  margin: 0 0 14px;
+}
+
+.answer-content ul,
+.answer-content ol {
+  padding-left: 24px;
+  margin: 10px 0 16px;
+}
+
+.answer-content li {
+  margin-bottom: 7px;
+}
+
+.answer-content strong {
+  font-weight: 700;
+}
+
+.answer-content pre {
+  overflow-x: auto;
+  padding: 14px;
+  border-radius: 8px;
+  background: var(--background);
+}
+
+.answer-content code {
   overflow-wrap: anywhere;
-  white-space: pre-wrap;
+}
+
+.answer-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+  text-align: left;
+}
+
+.answer-content th,
+.answer-content td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-strong);
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+.answer-content th {
+  font-weight: 700;
+  background: var(--surface);
+}
+
+.answer-content th:first-child,
+.answer-content td:first-child {
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+.answer-content tr:last-child td {
+  border-bottom: none;
 }
 
 .response-metrics,

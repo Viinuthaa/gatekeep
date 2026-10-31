@@ -1,4 +1,6 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowUpRight,
   Check,
@@ -13,8 +15,20 @@ import {
 } from "lucide-react";
 import "./App.css";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
 const DEMO_API_KEY = "gk_test_demo_key";
+const IS_LOCAL_API = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(API_BASE);
+const ENVIRONMENT_LABEL = IS_LOCAL_API ? "Local environment" : "Deployed environment";
+const BACKEND_ADDRESS = (() => {
+  try {
+    const url = new URL(API_BASE);
+    return url.host;
+  } catch {
+    return API_BASE;
+  }
+})();
 
 type Page =
   | "playground"
@@ -86,7 +100,7 @@ function App() {
   const [checkedAt, setCheckedAt] = useState("");
   const [model, setModel] = useState("gpt-4o-mini");
   const [prompt, setPrompt] = useState("");
-  const [apiKey, setApiKey] = useState(DEMO_API_KEY);
+  const [apiKey, setApiKey] = useState(IS_LOCAL_API ? DEMO_API_KEY : "");
   const [showKey, setShowKey] = useState(false);
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ApiResponse | null>(null);
@@ -601,7 +615,7 @@ function App() {
           <span className="project-mark">GK</span>
           <span>
             <strong>Gatekeep Gateway</strong>
-            <small>Local development</small>
+            <small>{IS_LOCAL_API ? "Local development" : "Connected deployment"}</small>
           </span>
         </div>
 
@@ -644,7 +658,7 @@ function App() {
                     ? "Gateway unavailable"
                     : "Checking gateway"}
               </strong>
-              <small>127.0.0.1:8000</small>
+              <small>{BACKEND_ADDRESS}</small>
             </div>
             <button
               className="sidebar-refresh"
@@ -674,7 +688,7 @@ function App() {
           <div className="topbar-actions">
             <span className="environment">
               <span />
-              Local environment
+              {ENVIRONMENT_LABEL}
             </span>
             <button
               className="topbar-refresh"
@@ -919,7 +933,9 @@ ${JSON.stringify(
                       </div>
 
                       <div className="answer-content">
-                        {answer || "No displayable text content was returned."}
+                       <ReactMarkdown remarkPlugins={[remarkGfm]}> 
+                         {answer || "No displayable text content was returned."}
+                       </ReactMarkdown>
                       </div>
 
                       <div className="response-metrics">
@@ -1418,11 +1434,11 @@ ${JSON.stringify(
                 className="secondary-button"
                 type="button"
                 onClick={() => {
-                  setApiKey(DEMO_API_KEY);
+                  setApiKey(IS_LOCAL_API ? DEMO_API_KEY : "");
                   setShowKey(false);
                 }}
               >
-                Reset local demo key
+                {IS_LOCAL_API ? "Reset local demo key" : "Clear gateway key"}
               </button>
               <div className="warning-message">
                 This is a Gatekeep gateway key, not your OpenAI provider secret.
@@ -1497,7 +1513,7 @@ ${JSON.stringify(
           )}
 
           <footer className="page-footer">
-            <span>GATEKEEP / LOCAL CONTROL PLANE</span>
+            <span>GATEKEEP / API CONTROL PLANE</span>
             <span>{checkedAt ? `Health checked ${checkedAt}` : "Health check pending"}</span>
           </footer>
         </div>
