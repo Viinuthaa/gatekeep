@@ -36,10 +36,10 @@ class Settings:
     )
 
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    DATABASE_URL: str = os.getenv(
+    DATABASE_URL = os.getenv(
         "DATABASE_URL",
-        "postgresql+psycopg://postgres:password@localhost:5432/gatekeep",
-    )
+        "postgresql+psycopg://postgres:password@localhost:5432/gatekeep"
+    ).replace("postgresql://", "postgresql+psycopg://", 1)
 
 
 settings = Settings()

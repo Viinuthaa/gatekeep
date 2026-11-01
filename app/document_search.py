@@ -2,9 +2,14 @@
 import re
 from dataclasses import dataclass
 
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
+
+from app.models import Document, DocumentChunk
+
 
 @dataclass(frozen=True)
-class DocumentChunk:
+class DocumentChunkData:
     tenant_id: str
     document_id: str
     chunk_index: int
@@ -12,23 +17,31 @@ class DocumentChunk:
 
 
 class DocumentSearch:
-    def __init__(self, chunk_size: int = 120, chunk_overlap: int = 20):
+    def __init__(
+        self,
+        db: Session | None = None,
+        chunk_size: int = 120,
+        chunk_overlap: int = 20,
+    ):
         if chunk_size < 1:
             raise ValueError("chunk_size must be positive")
 
         if chunk_overlap < 0 or chunk_overlap >= chunk_size:
-            raise ValueError("chunk_overlap must be non-negative and smaller than chunk_size")
+            raise ValueError(
+                "chunk_overlap must be non-negative and smaller than chunk_size"
+            )
 
+        self.db = db
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self._chunks: list[DocumentChunk] = []
+        self._chunks: list[DocumentChunkData] = []
 
     def add_document(
         self,
         tenant_id: str,
         document_id: str,
         text: str,
-    ) -> list[DocumentChunk]:
+    ) -> list[DocumentChunkData]:
         if not tenant_id.strip():
             raise ValueError("tenant_id is required")
 
@@ -48,28 +61,67 @@ class DocumentSearch:
             if not chunk_words:
                 break
 
-            chunk = DocumentChunk(
-                tenant_id=tenant_id,
-                document_id=document_id,
-                chunk_index=len(chunks),
-                text=" ".join(chunk_words),
+            chunks.append(
+                DocumentChunkData(
+                    tenant_id=tenant_id,
+                    document_id=document_id,
+                    chunk_index=len(chunks),
+                    text=" ".join(chunk_words),
+                )
             )
-
-            chunks.append(chunk)
 
             if start + self.chunk_size >= len(words):
                 break
 
-        self._chunks = [
-            chunk
-            for chunk in self._chunks
-            if not (
-                chunk.tenant_id == tenant_id
-                and chunk.document_id == document_id
-            )
-        ]
+        if self.db is not None:
+            try:
+                document = self.db.scalar(
+                    select(Document).where(
+                        Document.tenant_id == tenant_id,
+                        Document.document_id == document_id,
+                    )
+                )
 
-        self._chunks.extend(chunks)
+                if document is None:
+                    document = Document(
+                        tenant_id=tenant_id,
+                        document_id=document_id,
+                    )
+                    self.db.add(document)
+                    self.db.flush()
+                else:
+                    self.db.execute(
+                        delete(DocumentChunk).where(
+                            DocumentChunk.document_pk == document.id
+                        )
+                    )
+                    self.db.flush()
+
+                for chunk in chunks:
+                    self.db.add(
+                        DocumentChunk(
+                            document_pk=document.id,
+                            chunk_index=chunk.chunk_index,
+                            text=chunk.text,
+                        )
+                    )
+
+                self.db.commit()
+
+            except Exception:
+                self.db.rollback()
+                raise
+
+        else:
+            self._chunks = [
+                chunk
+                for chunk in self._chunks
+                if not (
+                    chunk.tenant_id == tenant_id
+                    and chunk.document_id == document_id
+                )
+            ]
+            self._chunks.extend(chunks)
 
         return chunks
 
@@ -90,9 +142,33 @@ class DocumentSearch:
         if not query_terms:
             return []
 
+        if self.db is not None:
+            statement = (
+                select(Document, DocumentChunk)
+                .join(
+                    DocumentChunk,
+                    Document.id == DocumentChunk.document_pk,
+                )
+                .where(Document.tenant_id == tenant_id)
+            )
+
+            rows = self.db.execute(statement).all()
+
+            chunks = [
+                DocumentChunkData(
+                    tenant_id=document.tenant_id,
+                    document_id=document.document_id,
+                    chunk_index=chunk.chunk_index,
+                    text=chunk.text,
+                )
+                for document, chunk in rows
+            ]
+        else:
+            chunks = self._chunks
+
         results = []
 
-        for chunk in self._chunks:
+        for chunk in chunks:
             if chunk.tenant_id != tenant_id:
                 continue
 
