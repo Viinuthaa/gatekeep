@@ -100,7 +100,7 @@ function App() {
   const [checkedAt, setCheckedAt] = useState("");
   const [model, setModel] = useState("gpt-4o-mini");
   const [prompt, setPrompt] = useState("");
-  const [apiKey, setApiKey] = useState(IS_LOCAL_API ? DEMO_API_KEY : "");
+  const [apiKey, setApiKey] = useState(DEMO_API_KEY);
   const [showKey, setShowKey] = useState(false);
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ApiResponse | null>(null);
