@@ -1,5 +1,6 @@
 
 from uuid import uuid4
+from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -9,8 +10,10 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_document_ingestion_and_search():
+@patch("app.main.check_rate_limit", new_callable=AsyncMock)
+def test_document_ingestion_and_search(mock_rate_limit):
     document_id = f"doc-{uuid4().hex}"
+    unique_term = f"gatekeepmarker{uuid4().hex}"
     headers = {"Authorization": "Bearer gk_test_demo_key"}
 
     ingest_response = client.post(
@@ -18,7 +21,7 @@ def test_document_ingestion_and_search():
         headers=headers,
         json={
             "document_id": document_id,
-            "text": "Gatekeep protects LLM requests using authentication and rate limiting.",
+            "text": f"Gatekeep protects LLM requests using authentication and rate limiting. {unique_term}",
         },
     )
 
@@ -29,7 +32,7 @@ def test_document_ingestion_and_search():
         "/api/v1/documents/search",
         headers=headers,
         json={
-            "query": "authentication rate limiting",
+            "query": unique_term,
             "limit": 5,
         },
     )

@@ -1,5 +1,6 @@
 
 from fastapi.testclient import TestClient
+from unittest.mock import AsyncMock, patch
 
 from app.main import app
 
@@ -9,7 +10,8 @@ client = TestClient(app)
 HEADERS = {"Authorization": "Bearer gk_test_demo_key"}
 
 
-def test_evaluation_endpoint_returns_report():
+@patch("app.main.check_rate_limit", new_callable=AsyncMock)
+def test_evaluation_endpoint_returns_report(mock_rate_limit):
     response = client.post(
         "/api/v1/evaluations/run",
         headers=HEADERS,

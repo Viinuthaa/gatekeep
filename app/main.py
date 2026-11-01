@@ -2,6 +2,7 @@
 import time
 
 from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy import text, desc
 from fastapi.middleware.cors import CORSMiddleware
 from openai import APIConnectionError, APIStatusError, RateLimitError
 from sqlalchemy.orm import Session
@@ -9,10 +10,11 @@ from sqlalchemy.orm import Session
 from app.auth import verify_api_key
 from app.cache import get_cached_response, set_cached_response
 from app.config import settings
-from app.database import get_db
+from app.database import engine, get_db
 from app.document_search import DocumentSearch
+from app.models import RequestLog
 from app.evaluations import EvaluationCase, run_evaluations
-from app.limiter import check_rate_limit
+from app.limiter import check_rate_limit, redis_client as limiter_redis_client
 from app.providers import get_chat_completion
 from app.request_logs import log_request
 from app.router import route_request
@@ -55,7 +57,34 @@ def home():
 
 @app.get("/health")
 def health_check():
+    # Liveness only: confirms that the API process is running.
     return {"status": "healthy"}
+
+
+@app.get("/ready")
+async def readiness_check():
+    checks = {}
+
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        checks["database"] = "healthy"
+    except Exception:
+        checks["database"] = "unavailable"
+
+    try:
+        await limiter_redis_client.ping()
+        checks["redis"] = "healthy"
+    except Exception:
+        checks["redis"] = "unavailable"
+
+    if any(value != "healthy" for value in checks.values()):
+        raise HTTPException(
+            status_code=503,
+            detail={"status": "not_ready", "checks": checks},
+        )
+
+    return {"status": "ready", "checks": checks}
 
 
 @app.get("/api/v1")
@@ -82,6 +111,8 @@ async def ingest_document(
     tenant_id: str = Depends(verify_api_key),
     db: Session = Depends(get_db),
 ):
+    await check_rate_limit(tenant_id)
+
     try:
         document_search = DocumentSearch(db=db)
         chunks = document_search.add_document(
@@ -105,6 +136,8 @@ async def search_documents(
     tenant_id: str = Depends(verify_api_key),
     db: Session = Depends(get_db),
 ):
+    await check_rate_limit(tenant_id)
+
     try:
         document_search = DocumentSearch(db=db)
         results = document_search.search(
@@ -128,6 +161,8 @@ async def evaluate_responses(
     request: EvaluationRunRequest,
     tenant_id: str = Depends(verify_api_key),
 ):
+    await check_rate_limit(tenant_id)
+
     cases = [
         EvaluationCase(
             name=case.name,
@@ -149,10 +184,46 @@ async def evaluate_responses(
     }
 
 
+
+
+@app.get("/api/v1/requests")
+def get_request_history(
+    limit: int = 50,
+    tenant_id: str = Depends(verify_api_key),
+    db: Session = Depends(get_db),
+):
+    if limit < 1 or limit > 100:
+        raise HTTPException(status_code=422, detail="Limit must be between 1 and 100.")
+
+    records = db.query(RequestLog).filter(
+        RequestLog.tenant_id == tenant_id
+    ).order_by(desc(RequestLog.created_at)).limit(limit).all()
+
+    return {
+        "tenant_id": tenant_id,
+        "count": len(records),
+        "requests": [
+            {
+                "id": record.request_id,
+                "request_id": record.request_id,
+                "time": record.created_at.isoformat(),
+                "model": record.model,
+                "prompt": record.prompt,
+                "status": "Succeeded",
+                "latency": record.latency_ms,
+                "prompt_tokens": record.prompt_tokens,
+                "completion_tokens": record.completion_tokens,
+                "cache_hit": record.cache_hit,
+            }
+            for record in records
+        ],
+    }
+
 @app.post("/api/v1/chat/completions")
 async def chat_completions(
     request: ChatRequest,
     tenant_id: str = Depends(verify_api_key),
+    db: Session = Depends(get_db),
 ):
     await check_rate_limit(tenant_id)
 
@@ -253,11 +324,14 @@ async def chat_completions(
         print(f"[TIMING] Total request: {latency_ms / 1000:.2f}s")
 
         request_log = log_request(
+            db=db,
             tenant_id=tenant_id,
             model=result["model"],
+            prompt=user_prompt,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             latency_ms=latency_ms,
+            cache_hit=cache_hit,
         )
 
         return {
@@ -293,4 +367,10 @@ async def chat_completions(
         raise HTTPException(
             status_code=502,
             detail="The AI provider returned an error.",
+        ) from exc
+
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI provider could not generate a valid response.",
         ) from exc

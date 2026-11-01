@@ -191,7 +191,61 @@ function App() {
     void checkHealth();
     return () => controller.abort();
   }, []);
+    useEffect(() => {
+    if (page !== "requests" || !apiKey.trim()) return;
 
+    const controller = new AbortController();
+
+    async function loadRequestHistory() {
+      try {
+        const result = await fetch(
+          `${API_BASE}/api/v1/requests?limit=50`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey.trim()}`,
+            },
+            signal: controller.signal,
+          },
+        );
+
+        if (!result.ok) {
+          throw new Error(`Request history failed (${result.status})`);
+        }
+
+        const data = await result.json();
+
+        if (controller.signal.aborted) return;
+
+        const history: RequestRecord[] = (data.requests ?? []).map(
+          (item: Record<string, unknown>) => ({
+            id: String(item.id ?? item.request_id),
+            requestId: String(item.request_id ?? item.id),
+            time: item.created_at
+              ? new Date(String(item.created_at)).toLocaleTimeString()
+              : "",
+            model: String(item.model ?? "Unknown"),
+            prompt: String(item.prompt ?? ""),
+            status: "Succeeded" as const,
+            latency:
+              typeof item.latency_ms === "number"
+                ? item.latency_ms
+                : undefined,
+          }),
+        );
+
+        setRequests(history);
+        setSelectedRequest(null);
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          console.error("Failed to load request history:", err);
+        }
+      }
+    }
+
+    void loadRequestHistory();
+
+    return () => controller.abort();
+  }, [page, apiKey]);
   async function sendRequest() {
     if (!prompt.trim()) {
       setError("Enter a message before sending the request.");
@@ -778,7 +832,9 @@ function App() {
                   </select>
 
                   <p className="field-help">
-                    The current router preserves the requested model.
+                   {IS_LOCAL_API
+                    ? "Use the local demo key during development. Never put a production secret in browser code."
+                    : "Enter your Gatekeep API key to authenticate requests. Never use your OpenAI or provider secret here."}
                   </p>
 
                   <div className="field-heading">
@@ -814,8 +870,9 @@ function App() {
                   </div>
 
                   <p className="field-help">
-                    Use the local demo key during development. Never put a
-                    production secret in browser code.
+                    {IS_LOCAL_API
+                      ? "Use the local demo key during development. Never put a production secret in browser code."
+                      : "Enter your Gatekeep API key to authenticate requests. Never use your OpenAI or provider secret here."}
                   </p>
 
                   <div className="field-heading">
