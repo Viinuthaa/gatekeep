@@ -18,7 +18,7 @@ import "./App.css";
 const API_BASE = (
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 ).replace(/\/+$/, "");
-const DEMO_API_KEY = "gk_test_demo_key";
+const DEMO_API_KEY = import.meta.env.VITE_GATEKEEP_API_KEY || "";
 const IS_LOCAL_API = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(API_BASE);
 const ENVIRONMENT_LABEL = IS_LOCAL_API ? "Local environment" : "Deployed environment";
 const BACKEND_ADDRESS = (() => {
