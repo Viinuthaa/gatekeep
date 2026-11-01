@@ -4,11 +4,13 @@ import time
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from openai import APIConnectionError, APIStatusError, RateLimitError
+from sqlalchemy.orm import Session
 
 from app.auth import verify_api_key
 from app.cache import get_cached_response, set_cached_response
 from app.config import settings
-from app.document_store import document_search
+from app.database import get_db
+from app.document_search import DocumentSearch
 from app.evaluations import EvaluationCase, run_evaluations
 from app.limiter import check_rate_limit
 from app.providers import get_chat_completion
@@ -36,17 +38,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
-
 
 @app.get("/")
 def home():
@@ -84,8 +80,10 @@ def validate_chat_request(request: ChatRequest):
 async def ingest_document(
     request: DocumentIngestRequest,
     tenant_id: str = Depends(verify_api_key),
+    db: Session = Depends(get_db),
 ):
     try:
+        document_search = DocumentSearch(db=db)
         chunks = document_search.add_document(
             tenant_id=tenant_id,
             document_id=request.document_id,
@@ -105,8 +103,10 @@ async def ingest_document(
 async def search_documents(
     request: DocumentSearchRequest,
     tenant_id: str = Depends(verify_api_key),
+    db: Session = Depends(get_db),
 ):
     try:
+        document_search = DocumentSearch(db=db)
         results = document_search.search(
             tenant_id=tenant_id,
             query=request.query,
@@ -178,7 +178,6 @@ async def chat_completions(
         messages = list(original_messages)
         search_used = False
         search_status = "not_needed"
-        search_elapsed = 0.0
 
         if needs_web_search(user_prompt):
             search_start = time.perf_counter()

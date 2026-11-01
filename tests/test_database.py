@@ -10,7 +10,8 @@ from app.database import Base, SessionLocal, engine, get_db
 
 def test_database_url_is_configured():
     assert settings.DATABASE_URL.startswith("postgresql+psycopg://")
-    assert settings.DATABASE_URL.endswith("/gatekeep")
+    assert "neon.tech" in settings.DATABASE_URL
+    assert settings.DATABASE_URL.endswith("channel_binding=require")
 
 
 def test_database_engine_is_created():

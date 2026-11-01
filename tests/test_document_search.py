@@ -98,7 +98,9 @@ def test_adding_same_document_replaces_old_chunks():
     )
 
     assert search.search("tenant-a", "biology") == []
+
     results = search.search("tenant-a", "chemistry")
+
     assert len(results) == 1
     assert results[0]["document_id"] == "doc-1"
 
