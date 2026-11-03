@@ -5,7 +5,8 @@
 Gatekeep is a centralized gateway for managing LLM requests, with intelligent routing, caching, rate limiting and request monitoring. Built with FastAPI and React, it provides a unified interface to interact with AI providers and inspect request behaviour.
 
 **Live Demo: https://usegatekeep.vercel.app/
- · [GitHub Repository](https://github.com/Viinuthaa/gatekeep)**
+
+ GitHub Repository: https://github.com/Viinuthaa/gatekeep**
 
 ## Preview
 
